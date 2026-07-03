@@ -1,0 +1,440 @@
+{
+  "id": "TechscriptAuto01",
+  "name": "Techscript Automation",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "e5e60d2d-9a97-46f8-a60d-1de7b95f5671",
+      "name": "Manual Test",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [180, 160]
+    },
+    {
+      "id": "6be30fd8-2ffc-4684-9c3e-4fbe6a3a3b1c",
+      "name": "PD Input Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [180, 420],
+      "parameters": {
+        "path": "techscript-automation",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "e01e961b-cc05-4f2f-9b0c-8ed573da58ea",
+      "name": "Manual Sample Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [470, 120],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "vaLink",
+              "name": "vaLink",
+              "type": "string",
+              "value": "https://docs.google.com/spreadsheets/d/PASTE_VA_SPREADSHEET_ID_HERE/edit"
+            },
+            {
+              "id": "targetSheetName",
+              "name": "targetSheetName",
+              "type": "string",
+              "value": "07/05/2026"
+            },
+            {
+              "id": "startRow",
+              "name": "startRow",
+              "type": "number",
+              "value": 9
+            },
+            {
+              "id": "lyricsText",
+              "name": "lyricsText",
+              "type": "string",
+              "value": "Heaven & Earth - COG Worship (D)\n\nINTRO:\nTara!\nNa na na na\nNananana(3x)\n\nVERSE 1:\nHeto na ang hinihintay\nNa maranasan Kang tunay\nSigaw ng puso at damdamin\nIkaw ay purihin\n\nCHORUS:\nGod of all heaven and earth\nYou have been with me through it all\nYour goodness and mercy overflow"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "9b311b7b-dd89-414c-8351-24489864af01",
+      "name": "Workflow Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [470, 280],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "targetSpreadsheetId",
+              "name": "targetSpreadsheetId",
+              "type": "string",
+              "value": "1nNk3LAOXbkqWm2d8352qPQ3awp1cLH6-j2IKrOKpLVA"
+            },
+            {
+              "id": "defaultTargetSheetName",
+              "name": "defaultTargetSheetName",
+              "type": "string",
+              "value": "07/05/2026"
+            },
+            {
+              "id": "defaultStartRow",
+              "name": "defaultStartRow",
+              "type": "number",
+              "value": 9
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "13bb392f-6f5b-4cc4-b9cc-7bbb2e894cd6",
+      "name": "Normalize PD Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [740, 280],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const config = $('Workflow Config').item.json\nconst source = $json.body ?? $json\n\nconst extractSpreadsheetId = (value) => {\n  const text = String(value ?? '').trim()\n  const match = text.match(/\\/spreadsheets\\/d\\/([a-zA-Z0-9-_]+)/)\n  if (match) return match[1]\n  if (/^[a-zA-Z0-9-_]{20,}$/.test(text)) return text\n  throw new Error('Invalid VA Google Sheets link or spreadsheet ID')\n}\n\nconst vaLink = source.vaLink ?? source.voiceArrangementLink ?? source.va ?? ''\nconst lyricsText = source.lyricsText ?? source.lyrics ?? ''\n\nif (!vaLink) throw new Error('Missing vaLink')\nif (!lyricsText) throw new Error('Missing lyricsText')\n\nconst targetSheetName = String(source.targetSheetName ?? config.defaultTargetSheetName).trim()\nconst startRow = Number(source.startRow ?? config.defaultStartRow)\n\nreturn {\n  json: {\n    ...source,\n    vaSpreadsheetId: extractSpreadsheetId(vaLink),\n    lyricsText: String(lyricsText).replace(/\\r/g, ''),\n    targetSpreadsheetId: config.targetSpreadsheetId,\n    targetSheetName,\n    startRow: Number.isFinite(startRow) && startRow > 0 ? startRow : Number(config.defaultStartRow),\n  },\n}\n"
+      }
+    },
+    {
+      "id": "f28dd74c-41d1-4ae7-92bc-68cb0eb198f3",
+      "name": "Read VA Metadata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1010, 280],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $('Normalize PD Input').item.json.vaSpreadsheetId }}?fields=sheets.properties",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "b9a12d6c-907b-41f0-8a98-b6a9de2cc0db",
+      "name": "Pick VA Sheet",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 280],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const input = $('Normalize PD Input').item.json\nconst sheets = Array.isArray($json.sheets) ? $json.sheets : []\nconst visibleSheets = sheets.filter((sheet) => !sheet.properties?.hidden)\nconst chosen = visibleSheets[0] ?? sheets[0]\nif (!chosen?.properties?.title) throw new Error('VA spreadsheet has no readable sheet tab')\n\nreturn {\n  json: {\n    ...input,\n    vaSheetName: chosen.properties.title,\n    vaReadRange: `'${String(chosen.properties.title).replace(/'/g, \"''\")}'!A1:Z500`,\n  },\n}\n"
+      }
+    },
+    {
+      "id": "8ba1cab4-08c8-4db7-9f07-19f2642d07d5",
+      "name": "Read VA Values",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1550, 280],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $('Pick VA Sheet').item.json.vaSpreadsheetId }}/values/{{ encodeURIComponent($('Pick VA Sheet').item.json.vaReadRange) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "e4f57926-4d48-47c4-8a39-97744d8ced79",
+      "name": "Build Techscript Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1820, 280],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const input = $('Pick VA Sheet').item.json\nconst vaValues = Array.isArray($json.values) ? $json.values : []\n\nconst SECTION_RE = /^(intro|verse(?:\\s+\\d+)?|pre[-\\s]?chorus|chorus|bridge|tag|outro|instrumental|interlude|coda)(?:\\s*[:\\-].*)?$/i\nconst WHO_HINT_RE = /\\b(solo\\s+[a-z0-9]+|unison|satb(?:m)?|acapella|all|wl\\d?|w\\d|male|female|tenor|alto|soprano|bass)\\b/i\n\nconst normalizeSection = (value) => String(value ?? '')\n  .replace(/[:\\-]+$/g, '')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .toUpperCase()\n\nconst clean = (value) => String(value ?? '')\n  .replace(/\\r/g, '')\n  .replace(/[ \\t]+/g, ' ')\n  .trim()\n\nconst parseLyrics = (text) => {\n  const lines = String(text ?? '').replace(/\\r/g, '').split('\\n')\n  const rows = []\n  let currentSong = ''\n  let currentSection = null\n  let currentLines = []\n\n  const flush = () => {\n    if (!currentSection) return\n    const section = normalizeSection(currentSection)\n    const body = currentLines.join('\\n').trim()\n    rows.push({\n      songTitle: currentSong,\n      section,\n      production: body ? `${section}:\\n${body}` : section,\n    })\n    currentSection = null\n    currentLines = []\n  }\n\n  for (const rawLine of lines) {\n    const line = rawLine.trim()\n    if (!line) continue\n    if (SECTION_RE.test(line)) {\n      flush()\n      currentSection = line\n      currentLines = []\n      continue\n    }\n    if (!currentSection) {\n      currentSong = line\n      rows.push({ songTitle: currentSong, section: 'SONG', production: currentSong })\n      continue\n    }\n    currentLines.push(line)\n  }\n  flush()\n  return rows\n}\n\nconst buildWhoMap = (values) => {\n  const map = new Map()\n  for (const row of values) {\n    const cells = row.map(clean).filter(Boolean)\n    if (cells.length < 2) continue\n    const joined = cells.join(' | ')\n    const sectionCell = cells.find((cell) => SECTION_RE.test(cell) || /^(verse|chorus|bridge|intro|tag|outro|instrumental|interlude|coda)/i.test(cell))\n    const whoCell = cells.find((cell) => WHO_HINT_RE.test(cell) && cell !== sectionCell)\n    if (!sectionCell || !whoCell) continue\n    const section = normalizeSection(sectionCell)\n    if (!map.has(section)) map.set(section, clean(whoCell))\n    if (!map.has(joined.toUpperCase())) map.set(joined.toUpperCase(), clean(whoCell))\n  }\n  return map\n}\n\nconst whoMap = buildWhoMap(vaValues)\nconst lyricRows = parseLyrics(input.lyricsText)\nconst outputRows = lyricRows.map((row, index) => {\n  const who = row.section === 'SONG' ? '' : (whoMap.get(row.section) ?? '')\n  return [index + 1, row.production, who]\n})\n\nif (outputRows.length === 0) throw new Error('No lyric sections found. Add section labels like VERSE 1:, CHORUS:, BRIDGE:.')\n\nconst startRow = Number(input.startRow || 9)\nconst endRow = startRow + outputRows.length - 1\nconst quotedTargetSheet = String(input.targetSheetName).replace(/'/g, \"''\")\n\nreturn {\n  json: {\n    targetSpreadsheetId: input.targetSpreadsheetId,\n    targetSheetName: input.targetSheetName,\n    clearRange: `'${quotedTargetSheet}'!B${startRow}:D500`,\n    writeRange: `'${quotedTargetSheet}'!B${startRow}:D${endRow}`,\n    values: outputRows,\n    rowCount: outputRows.length,\n    vaSheetName: input.vaSheetName,\n    unmappedCount: lyricRows.filter((row) => row.section !== 'SONG' && !whoMap.get(row.section)).length,\n  },\n}\n"
+      }
+    },
+    {
+      "id": "743f19cd-7386-4b2c-ab14-578275a14f1a",
+      "name": "Clear Techscript Rows",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2090, 280],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $('Build Techscript Rows').item.json.targetSpreadsheetId }}/values/{{ encodeURIComponent($('Build Techscript Rows').item.json.clearRange) }}:clear",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ ({}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "8bcb613a-c707-461e-ad57-441c6e43fd24",
+      "name": "Write Techscript Rows",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2360, 280],
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $('Build Techscript Rows').item.json.targetSpreadsheetId }}/values/{{ encodeURIComponent($('Build Techscript Rows').item.json.writeRange) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendQuery": true,
+        "specifyQuery": "keypair",
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "valueInputOption",
+              "value": "USER_ENTERED"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ values: $('Build Techscript Rows').item.json.values }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "74d4c2c0-c942-4b76-9519-3a95b682cf5d",
+      "name": "Run Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2630, 280],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok",
+              "name": "ok",
+              "type": "boolean",
+              "value": true
+            },
+            {
+              "id": "rowsWritten",
+              "name": "rowsWritten",
+              "type": "number",
+              "value": "={{ $('Build Techscript Rows').item.json.rowCount }}"
+            },
+            {
+              "id": "targetSheetName",
+              "name": "targetSheetName",
+              "type": "string",
+              "value": "={{ $('Build Techscript Rows').item.json.targetSheetName }}"
+            },
+            {
+              "id": "writeRange",
+              "name": "writeRange",
+              "type": "string",
+              "value": "={{ $('Build Techscript Rows').item.json.writeRange }}"
+            },
+            {
+              "id": "unmappedWhoRows",
+              "name": "unmappedWhoRows",
+              "type": "number",
+              "value": "={{ $('Build Techscript Rows').item.json.unmappedCount }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "f37a0345-0742-4753-a567-55f6225c6e2f",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [420, 40],
+      "parameters": {
+        "content": "PD input: vaLink + lyricsText. Target Techscript is configured here as the July 5, 2026 template. Override targetSheetName/startRow only when needed.",
+        "color": 5,
+        "width": 520,
+        "height": 160
+      }
+    },
+    {
+      "id": "76d45dbe-5a5e-4db6-9a43-4e205cc25376",
+      "name": "Sticky Note 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1760, 60],
+      "parameters": {
+        "content": "Writes only B:D: SEQ, PRODUCTION, WHO. Existing Techscript formatting and other production columns stay intact.",
+        "color": 4,
+        "width": 460,
+        "height": 140
+      }
+    }
+  ],
+  "connections": {
+    "Manual Test": {
+      "main": [
+        [
+          {
+            "node": "Manual Sample Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Sample Input": {
+      "main": [
+        [
+          {
+            "node": "Workflow Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PD Input Webhook": {
+      "main": [
+        [
+          {
+            "node": "Workflow Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Config": {
+      "main": [
+        [
+          {
+            "node": "Normalize PD Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize PD Input": {
+      "main": [
+        [
+          {
+            "node": "Read VA Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read VA Metadata": {
+      "main": [
+        [
+          {
+            "node": "Pick VA Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick VA Sheet": {
+      "main": [
+        [
+          {
+            "node": "Read VA Values",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read VA Values": {
+      "main": [
+        [
+          {
+            "node": "Build Techscript Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Techscript Rows": {
+      "main": [
+        [
+          {
+            "node": "Clear Techscript Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Techscript Rows": {
+      "main": [
+        [
+          {
+            "node": "Write Techscript Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Techscript Rows": {
+      "main": [
+        [
+          {
+            "node": "Run Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "nodeGroups": [],
+  "tags": [],
+  "meta": {
+    "aiBuilderAssisted": true
+  }
+}

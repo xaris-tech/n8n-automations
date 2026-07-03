@@ -1,0 +1,160 @@
+{
+  "name": "Weekly IR By Location Summary",
+  "nodes": [
+    {
+      "id": "a07604ab-d422-4605-95bc-b313afa38ff9",
+      "name": "Manual Run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [220, 180]
+    },
+    {
+      "id": "727354b7-a743-4752-ab72-40cfd54baf44",
+      "name": "Row Added Trigger",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [220, 420],
+      "parameters": {
+        "event": "rowAdded",
+        "documentId": { "__rl": true, "mode": "id", "value": "19A1DCQEEKa97NzcK8XBdsqk8LXC03jVMQSI0jHwfmFI" },
+        "sheetName": { "__rl": true, "mode": "id", "value": "0" },
+        "options": {
+          "dataLocationOnSheet": { "values": { "rangeDefinition": "specifyRangeA1", "range": "A:R" } },
+          "valueRender": "UNFORMATTED_VALUE",
+          "dateTimeRenderOption": "FORMATTED_STRING"
+        }
+      }
+    },
+    {
+      "id": "efd76aac-3421-4634-9af0-961fd6f26b36",
+      "name": "Workflow Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [500, 300],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "sourceSpreadsheetId", "name": "sourceSpreadsheetId", "type": "string", "value": "19A1DCQEEKa97NzcK8XBdsqk8LXC03jVMQSI0jHwfmFI" },
+            { "id": "sourceReadRange", "name": "sourceReadRange", "type": "string", "value": "MASTERLIST!A1:R" },
+            { "id": "targetSpreadsheetId", "name": "targetSpreadsheetId", "type": "string", "value": "1uIpT3WTbjPNnyF4LkKuJ0dzbqynUnztwS9EF8MshehI" },
+            { "id": "targetSheetName", "name": "targetSheetName", "type": "string", "value": "WEEKLY IR BY LOCATION" },
+            { "id": "targetClearRange", "name": "targetClearRange", "type": "string", "value": "'WEEKLY IR BY LOCATION'!A1:K80" },
+            { "id": "summaryStartDate", "name": "summaryStartDate", "type": "string", "value": "2026-06-28" },
+            { "id": "summaryEndDate", "name": "summaryEndDate", "type": "string", "value": "2026-07-02" },
+            { "id": "locationOrder", "name": "locationOrder", "type": "array", "value": ["COG Marilag", "COG Trece", "COG Jabez", "COG Silang"] },
+            { "id": "teamOrder", "name": "teamOrder", "type": "array", "value": ["Audio", "Broadcast", "Stage Management", "Arts", "Tech", "Maintenance", "Light", "Musician", "Praise and Worship", "Ushering", "Housekeeping", "Theatre"] }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "78a75e48-b5f3-44e2-9749-1585dbc7a50f",
+      "name": "Read Source Rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [1300, 300],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": { "__rl": true, "mode": "id", "value": "={{ $(\"Workflow Config\").item.json.sourceSpreadsheetId }}" },
+        "sheetName": { "__rl": true, "mode": "name", "value": "MASTERLIST" },
+        "options": {
+          "dataLocationOnSheet": { "values": { "rangeDefinition": "specifyRangeA1", "range": "A1:R" } },
+          "outputFormatting": { "values": { "general": "UNFORMATTED_VALUE", "date": "FORMATTED_STRING" } },
+          "returnAllMatches": "returnAllMatches"
+        }
+      }
+    },
+    {
+      "id": "22616c5f-4082-4c90-941c-dff84105fb86",
+      "name": "Build Weekly Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const config = $('Workflow Config').item.json\nconst allItems = $input.all()\nconst sheetHeaders = allItems.length > 0 ? Object.keys(allItems[0].json) : []\nconst sheetRows = allItems.map((item) => sheetHeaders.map((key) => item.json[key] ?? ''))\nconst rawValues = sheetHeaders.length > 0 ? [sheetHeaders, ...sheetRows] : []\n\nconst NL = String.fromCharCode(10)\nconst SPACES = /[ \t]+/g\nconst SPACES_PUNCT = /[ \t]+([,.;:!?])/g\nconst PROD_START = /^production[ \t]+/i\nconst PROD_SHORT = /^prod[ \t]+/i\nconst WHOLEDAY = /(?<!\\\\w)Wholeday(?!\\\\w)/gi\nconst MULTI_SPACE = /[ ]{2,}/g\n\nif (rawValues.length === 0) {\n  return {\n    json: {\n      targetSpreadsheetId: config.targetSpreadsheetId,\n      targetClearRange: config.targetClearRange,\n      targetWriteRange: \"'WEEKLY IR BY LOCATION'!A1:K6\",\n      values: [\n        ['WEEKLY IR REPORT LOGS'],\n        [' 06/28/2026 - 07/02/2026'],\n        [],\n        ['NO INCIDENTS FOUND'],\n        ['PREACHER:' + NL + 'WORSHIP LEADER:'],\n        ['Team', 'Event', 'Severity', 'Issue Summary', 'Action Taken', 'Follow-up', 'Status', '', 'Tech Crew per Unit', '', 'Notes'],\n      ],\n    },\n  }\n}\n\nconst [headers, ...rows] = rawValues\nconst headerIndex = Object.fromEntries(headers.map((header, index) => [header, index]))\nconst locationOrder = Array.isArray(config.locationOrder) ? config.locationOrder : []\nconst teamOrder = Array.isArray(config.teamOrder) ? config.teamOrder : []\n\nconst sourceFields = {\n  timestamp: headerIndex['Timestamp'],\n  location: headerIndex['LOCATION'],\n  team: headerIndex['UNIT CONCERN'],\n  event: headerIndex['PRODUCTION EVENT'],\n  summary: headerIndex['Brief Description of Concern'],\n  severity: headerIndex['Criticality Levels (Church Production)'],\n  actionTaken: headerIndex['ACTION TAKEN'],\n  followUp: headerIndex['Corrective Action report required? '],\n  status: headerIndex['REMARKS'],\n}\n\nconst toDate = (value) => {\n  if (!value) return null\n  const parsed = new Date(value)\n  if (!Number.isNaN(parsed.getTime())) return parsed\n  return null\n}\n\nconst startDate = new Date(config.summaryStartDate + 'T00:00:00')\nconst endDate = new Date(config.summaryEndDate + 'T23:59:59')\n\nconst pad = (value) => String(value).padStart(2, '0')\nconst formatDate = (date) => pad(date.getMonth() + 1) + '/' + pad(date.getDate()) + '/' + date.getFullYear()\n\nconst normalizeEvent = (value) => {\n  const raw = String(value ?? '').trim()\n  if (!raw) return ''\n  return raw\n    .replace(PROD_START, '')\n    .replace(PROD_SHORT, '')\n    .replace(WHOLEDAY, 'Whole Day')\n    .replace(SPACES, ' ')\n    .trim()\n}\n\nconst normalizeSeverity = (value) => {\n  const raw = String(value ?? '').trim().toLowerCase()\n  if (raw.startsWith('high')) return 'High'\n  if (raw.startsWith('medium')) return 'Medium'\n  if (raw.startsWith('low')) return 'Low'\n  return 'Medium'\n}\n\nconst cleanText = (value) => {\n  return String(value ?? '')\n    .replace(SPACES, ' ')\n    .replace(SPACES_PUNCT, '$1')\n    .trim()\n}\n\nconst normalizeYesNo = (value) => {\n  const raw = String(value ?? '').trim().toLowerCase()\n  if (raw === 'yes') return 'Yes'\n  if (raw === 'no') return 'No'\n  return ''\n}\n\nconst normalizeStatus = (value) => {\n  const raw = String(value ?? '').trim()\n  if (!raw) return ''\n  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase()\n}\n\nconst locationRank = (value) => {\n  const index = locationOrder.findIndex((entry) => String(entry).toLowerCase() === String(value).toLowerCase())\n  return index === -1 ? 999 : index\n}\n\nconst teamRank = (value) => {\n  const index = teamOrder.findIndex((entry) => String(entry).toLowerCase() === String(value).toLowerCase())\n  return index === -1 ? 999 : index\n}\n\nconst normalizedRows = rows\n  .map((row) => {\n    const timestamp = row[sourceFields.timestamp] ?? ''\n    const parsedDate = toDate(timestamp)\n    if (!parsedDate) return null\n    if (parsedDate < startDate || parsedDate > endDate) return null\n\n    return {\n      sourceTimestamp: parsedDate,\n      location: cleanText(row[sourceFields.location]),\n      team: cleanText(row[sourceFields.team]),\n      event: normalizeEvent(row[sourceFields.event]),\n      severity: normalizeSeverity(row[sourceFields.severity]),\n      issueSummary: cleanText(row[sourceFields.summary]),\n      actionTaken: cleanText(row[sourceFields.actionTaken]),\n      followUp: normalizeYesNo(row[sourceFields.followUp]),\n      status: normalizeStatus(row[sourceFields.status]),\n    }\n  })\n  .filter(Boolean)\n\nnormalizedRows.sort((left, right) => {\n  const byLocation = locationRank(left.location) - locationRank(right.location)\n  if (byLocation !== 0) return byLocation\n  const byTeam = teamRank(left.team) - teamRank(right.team)\n  if (byTeam !== 0) return byTeam\n  const byEvent = left.event.localeCompare(right.event)\n  if (byEvent !== 0) return byEvent\n  return left.sourceTimestamp.getTime() - right.sourceTimestamp.getTime()\n})\n\nconst groupedByLocation = normalizedRows.reduce((accumulator, row) => {\n  if (!accumulator[row.location]) accumulator[row.location] = []\n  accumulator[row.location].push(row)\n  return accumulator\n}, {})\n\nconst summaryRows = [\n  ['WEEKLY IR REPORT LOGS'],\n  [' ' + formatDate(startDate) + ' - ' + formatDate(endDate)],\n  [],\n]\n\nconst orderedLocations = Object.keys(groupedByLocation).sort((left, right) => locationRank(left) - locationRank(right))\n\nif (orderedLocations.length === 0) {\n  summaryRows.push(['NO INCIDENTS FOUND'])\n  summaryRows.push(['PREACHER:' + NL + 'WORSHIP LEADER:'])\n  summaryRows.push(['Team', 'Event', 'Severity', 'Issue Summary', 'Action Taken', 'Follow-up', 'Status', '', 'Tech Crew per Unit', '', 'Notes'])\n} else {\n  orderedLocations.forEach((location, locationIndex) => {\n    summaryRows.push([String(location).toUpperCase()])\n    summaryRows.push(['PREACHER:' + NL + 'WORSHIP LEADER:'])\n    summaryRows.push(['Team', 'Event', 'Severity', 'Issue Summary', 'Action Taken', 'Follow-up', 'Status', '', 'Tech Crew per Unit', '', 'Notes'])\n\n    let previousTeam = ''\n    groupedByLocation[location].forEach((row) => {\n      const displayTeam = row.team === previousTeam ? '' : row.team\n      previousTeam = row.team\n      summaryRows.push([\n        displayTeam,\n        row.event,\n        row.severity,\n        row.issueSummary,\n        row.actionTaken,\n        row.followUp,\n        row.status,\n        '',\n        '',\n        '',\n        '',\n      ])\n    })\n\n    if (locationIndex < orderedLocations.length - 1) {\n      summaryRows.push([])\n      summaryRows.push([])\n    }\n  })\n}\n\nreturn {\n  json: {\n    targetSpreadsheetId: config.targetSpreadsheetId,\n    targetClearRange: config.targetClearRange,\n    targetWriteRange: \"'\" + config.targetSheetName + \"'!A1:K\" + summaryRows.length,\n    values: summaryRows,\n  },\n}\n"
+      }
+    },
+    {
+      "id": "830a8fd1-9135-442c-830a-f3e1e67b6f58",
+      "name": "Clear Target Range",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1820, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $(\"Build Weekly Summary\").item.json.targetSpreadsheetId }}/values/{{ encodeURIComponent($(\"Build Weekly Summary\").item.json.targetClearRange) }}:clear",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ ({}) }}",
+        "options": {
+          "response": {
+            "response": { "responseFormat": "json" }
+          }
+        }
+      }
+    },
+    {
+      "id": "d5a66e59-1b19-4e78-be4f-f25e698234a9",
+      "name": "Write Summary Range",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2080, 300],
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $(\"Build Weekly Summary\").item.json.targetSpreadsheetId }}/values/{{ encodeURIComponent($(\"Build Weekly Summary\").item.json.targetWriteRange) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendQuery": true,
+        "specifyQuery": "keypair",
+        "queryParameters": {
+          "parameters": [{ "name": "valueInputOption", "value": "USER_ENTERED" }]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ values: $(\"Build Weekly Summary\").item.json.values }) }}",
+        "options": {
+          "response": {
+            "response": { "responseFormat": "json" }
+          }
+        }
+      }
+    },
+    {
+      "id": "97fdfad4-9aa5-490c-9471-704c31d4a98c",
+      "name": "Sticky Note 3c66eacb",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [450, 250],
+      "parameters": {
+        "content": "Backfill/test window set to 2026-06-28 through 2026-07-02. Update date fields in Workflow Config later for new weekly runs. Right-side crew columns stay blank on purpose because source sheet has no matching crew roster data.",
+        "color": 5,
+        "width": 520,
+        "height": 180
+      }
+    }
+  ],
+  "connections": {
+    "Manual Run": { "main": [[{ "node": "Workflow Config", "type": "main", "index": 0 }]] },
+    "Row Added Trigger": { "main": [[{ "node": "Workflow Config", "type": "main", "index": 0 }]] },
+    "Workflow Config": { "main": [[{ "node": "Read Source Rows", "type": "main", "index": 0 }]] },
+    "Read Source Rows": { "main": [[{ "node": "Build Weekly Summary", "type": "main", "index": 0 }]] },
+    "Build Weekly Summary": { "main": [[{ "node": "Clear Target Range", "type": "main", "index": 0 }]] },
+    "Clear Target Range": { "main": [[{ "node": "Write Summary Range", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "tags": [],
+  "meta": { "aiBuilderAssisted": true }
+}

@@ -1,0 +1,82 @@
+# Secrets
+.env
+.env.*
+!.env.example
+credentials/
+secrets/
+private/
+*.secret
+*.secrets
+*.token
+*.tokens
+*.jwt
+*.session
+*.bak
+*.backup
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.ovpn
+*.mobileconfig
+*service-account*.json
+*credentials*.json
+*oauth*.json
+*.npmrc
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+
+# Local agent/tool state
+.agents/
+.codex/
+.playwright-mcp/
+.scratch/
+
+# Local n8n/runtime state
+.n8n-local-runtime/
+.n8n/
+data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Node deps
+node_modules/
+**/node_modules/
+
+# Logs
+*.log
+.n8n-local.out.log
+.n8n-local.err.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+nul
+
+# Build/cache/temp
+dist/
+build/
+.cache/
+tmp/
+temp/
+*.tmp
+
+# Archives / exports that may contain secrets or data dumps
+*.zip
+*.tar
+*.gz
+*.7z
+*.rar
+exports/
+backups/
+dump/
