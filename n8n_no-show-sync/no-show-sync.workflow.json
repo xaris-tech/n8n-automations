@@ -1,0 +1,390 @@
+{
+  "id": "NoShowSync01",
+  "name": "No Show Sync",
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "292f1d95-30a2-4e14-9fd7-79339c4d62fd",
+      "name": "Manual Run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "id": "e937ad5e-3a4f-4cfe-b4e8-b8df770a56f1",
+      "name": "Run From Sheet",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        500
+      ],
+      "parameters": {
+        "path": "no-show-sync",
+        "httpMethod": "POST",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "no-show-sync-webhook"
+    },
+    {
+      "id": "ab4e17ea-8ac5-4178-a218-3dc8679b37f7",
+      "name": "Workflow Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        500,
+        300
+      ],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "sourceSpreadsheetId",
+              "name": "sourceSpreadsheetId",
+              "type": "string",
+              "value": "141eVqlrhYY8vCJCmVRmhWewswWi2F4MoAG1NNu0gUj4"
+            },
+            {
+              "id": "sourceSheetName",
+              "name": "sourceSheetName",
+              "type": "string",
+              "value": "Attendance"
+            },
+            {
+              "id": "sourceReadRange",
+              "name": "sourceReadRange",
+              "type": "string",
+              "value": "'Attendance'!A1:R"
+            },
+            {
+              "id": "targetSpreadsheetId",
+              "name": "targetSpreadsheetId",
+              "type": "string",
+              "value": "1EI_JuouZEBsnXo7M0zddsp9g26vfWzCxC8GEUyDH_rw"
+            },
+            {
+              "id": "targetSheetName",
+              "name": "targetSheetName",
+              "type": "string",
+              "value": "2026"
+            },
+            {
+              "id": "targetReadRange",
+              "name": "targetReadRange",
+              "type": "string",
+              "value": "'2026'!A3:G"
+            },
+            {
+              "id": "targetAppendRange",
+              "name": "targetAppendRange",
+              "type": "string",
+              "value": "'2026'!A:G"
+            },
+            {
+              "id": "targetHeaderRow",
+              "name": "targetHeaderRow",
+              "type": "number",
+              "value": 3
+            },
+            {
+              "id": "targetFirstDataRow",
+              "name": "targetFirstDataRow",
+              "type": "number",
+              "value": 4
+            },
+            {
+              "id": "automationSheetName",
+              "name": "automationSheetName",
+              "type": "string",
+              "value": "Automation"
+            },
+            {
+              "id": "automationReadRange",
+              "name": "automationReadRange",
+              "type": "string",
+              "value": "'Automation'!A:B"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "132ed87a-85d3-4706-b6d6-cc153cc2f4f1",
+      "name": "Read Automation Settings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        780,
+        300
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "g23DUDTygWsJu8ef",
+          "name": "Google Service Account account"
+        }
+      },
+      "parameters": {
+        "method": "GET",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $(\"Workflow Config\").item.json.targetSpreadsheetId }}/values/{{ encodeURIComponent($(\"Workflow Config\").item.json.automationReadRange) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "2d8c47fe-7909-4216-bd59-19ca0ef26fda",
+      "name": "Read Source Values",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1040,
+        220
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "g23DUDTygWsJu8ef",
+          "name": "Google Service Account account"
+        }
+      },
+      "parameters": {
+        "method": "GET",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $(\"Workflow Config\").item.json.sourceSpreadsheetId }}/values/{{ encodeURIComponent($(\"Workflow Config\").item.json.sourceReadRange) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "dc3c4ed0-6b82-4382-b93d-d6104787eaf5",
+      "name": "Read Existing Target Rows",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1040,
+        380
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "g23DUDTygWsJu8ef",
+          "name": "Google Service Account account"
+        }
+      },
+      "parameters": {
+        "method": "GET",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $(\"Workflow Config\").item.json.targetSpreadsheetId }}/values/{{ encodeURIComponent($(\"Workflow Config\").item.json.targetReadRange) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "a94c5fc5-fb3a-4e89-aa34-d8db05b37434",
+      "name": "Build New No Show Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const config = $('Workflow Config').item.json\nconst sourcePayload = $('Read Source Values').item.json\nconst targetPayload = $('Read Existing Target Rows').item.json\nconst automationPayload = $('Read Automation Settings').item.json\nconst triggerPayload = (() => {\n  try {\n    return $('Run From Sheet').item.json.body ?? $('Run From Sheet').item.json ?? {}\n  } catch (error) {\n    return {}\n  }\n})()\n\nconst clean = (value) => String(value ?? '')\n  .replace(/\\r/g, '')\n  .replace(/[ \\t]+/g, ' ')\n  .trim()\n\nconst normalizePerson = (value) => {\n  const text = clean(value)\n  if (!text) return ''\n  if (text.toLowerCase() === 'n/a') return ''\n  return text\n}\n\nconst monthNames = ['Jan', 'Feb', 'March', 'April', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec']\nconst monthAliases = new Map([\n  ['jan', 1], ['january', 1],\n  ['feb', 2], ['february', 2],\n  ['mar', 3], ['march', 3],\n  ['apr', 4], ['april', 4],\n  ['may', 5],\n  ['jun', 6], ['june', 6],\n  ['jul', 7], ['july', 7],\n  ['aug', 8], ['august', 8],\n  ['sep', 9], ['sept', 9], ['september', 9],\n  ['oct', 10], ['october', 10],\n  ['nov', 11], ['november', 11],\n  ['dec', 12], ['december', 12],\n])\n\nconst parseDate = (value) => {\n  const text = clean(value)\n  if (!text) return null\n  const parsed = new Date(text)\n  if (!Number.isNaN(parsed.getTime())) return parsed\n  const match = text.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{2,4})$/)\n  if (!match) return null\n  const year = Number(match[3].length === 2 ? '20' + match[3] : match[3])\n  return new Date(year, Number(match[1]) - 1, Number(match[2]))\n}\n\nconst formatDate = (value) => {\n  const parsed = parseDate(value)\n  if (!parsed) return clean(value)\n  return monthNames[parsed.getMonth()] + ' ' + parsed.getDate()\n}\n\nconst normalizeMonth = (value) => {\n  const text = clean(value).toLowerCase()\n  if (!text) return null\n  if (/^\\d+$/.test(text)) {\n    const month = Number(text)\n    return month >= 1 && month <= 12 ? month : null\n  }\n  return monthAliases.get(text) ?? null\n}\n\nconst automationRows = Array.isArray(automationPayload.values) ? automationPayload.values : []\nconst automationSettings = Object.fromEntries(\n  automationRows\n    .filter((row) => row.length >= 2)\n    .map((row) => [clean(row[0]).toLowerCase(), clean(row[1])])\n)\n\nconst triggerMonth = normalizeMonth(triggerPayload.month ?? triggerPayload.Month)\nconst settingsMonth = normalizeMonth(automationSettings.month ?? automationSettings['date range'])\nconst selectedMonth = triggerMonth ?? settingsMonth\n\nconst normalizeYear = (value) => {\n  const year = Number(clean(value))\n  return Number.isInteger(year) && year >= 2000 && year <= 2100 ? year : null\n}\nconst triggerYear = normalizeYear(triggerPayload.year ?? triggerPayload.Year)\nconst settingsYear = normalizeYear(\n  automationSettings.year ?? automationSettings['date year'] ?? automationSettings['date range year']\n)\nconst selectedYear = triggerYear ?? settingsYear\n\nconst requestedFillWhat = clean(triggerPayload.fillWhat ?? triggerPayload['Fill What?'])\nconst settingsFillWhat = clean(automationSettings['fill what?'])\nconst fillWhat = [requestedFillWhat, settingsFillWhat, 'No Show']\n  .find((value) => value.toLowerCase() === 'no show')\n\nconst rawValues = Array.isArray(sourcePayload.values) ? sourcePayload.values : []\nif (rawValues.length < 3) return [{ json: { appendedCount: 0, values: [], reason: 'No source rows found' } }]\nconst [, headers, ...rows] = rawValues\n\nconst normalizeSlot = (value) => {\n  const raw = clean(value)\n  const lower = raw.toLowerCase()\n  if (lower.includes('main slot')) return 'Mainslot'\n  if (lower.includes('mid slot')) return 'Midslot'\n  if (lower.includes('tws') || lower.includes('revival night')) return 'TWS'\n  if (lower.includes('empowered night')) return 'Enight'\n  return raw\n    .replace(/^production\\s+/i, '')\n    .replace(/^prod\\s+/i, '')\n    .replace(/[()]/g, '')\n    .replace(/\\s+/g, ' ')\n    .trim()\n}\n\nconst targetValues = Array.isArray(targetPayload.values) ? targetPayload.values : []\nconst [targetHeaders = [], ...targetRows] = targetValues\nconst targetIndex = Object.fromEntries(targetHeaders.map((header, index) => [clean(header).toUpperCase(), index]))\nconst existingKeys = new Set(\n  targetRows\n    .map((row) => {\n      const date = clean(row[targetIndex.DATE])\n      const slot = clean(row[targetIndex.SLOT])\n      const name = clean(row[targetIndex.NAME])\n      const floorDirector = clean(row[targetIndex['FLOOR DIRECTOR']])\n      const technicalDirector = clean(row[targetIndex['TECHNICAL DIRECTOR']])\n      return [date, slot, name, floorDirector, technicalDirector].join(' | ')\n    })\n    .filter((key) => key !== ' |  |  |  | ')\n)\n\nconst outputRows = []\nfor (const row of rows) {\n  const sourceDate = parseDate(row[2])\n  if (!sourceDate) continue\n  if (selectedMonth && sourceDate.getMonth() + 1 !== selectedMonth) continue\n  if (selectedYear && sourceDate.getFullYear() !== selectedYear) continue\n\n  const productionName = clean(row[1])\n  const date = formatDate(row[2])\n  const technicalDirector = normalizePerson(row[3])\n  const floorDirector = normalizePerson(row[5])\n  const slot = normalizeSlot(productionName)\n  const noShowNames = [row[15], row[16], row[17]].map(normalizePerson).filter(Boolean)\n\n  for (const name of noShowNames) {\n    const key = [date, slot, name, floorDirector, technicalDirector].join(' | ')\n    if (existingKeys.has(key)) continue\n    existingKeys.add(key)\n    outputRows.push(['', '', date, slot, name, floorDirector, technicalDirector])\n  }\n}\n\nif (outputRows.length === 0) return []\n\nreturn [{\n  json: {\n    targetSpreadsheetId: config.targetSpreadsheetId,\n    targetAppendRange: config.targetAppendRange,\n    values: outputRows,\n    appendedCount: outputRows.length,\n    selectedMonth,\n    selectedYear,\n  },\n}]\n"
+      }
+    },
+    {
+      "id": "3e5150e7-43c4-4f39-9226-93c1205d36e0",
+      "name": "Append No Show Rows",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1680,
+        300
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "g23DUDTygWsJu8ef",
+          "name": "Google Service Account account"
+        }
+      },
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $json.targetSpreadsheetId }}/values/{{ encodeURIComponent($json.targetAppendRange) }}:append",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendQuery": true,
+        "specifyQuery": "keypair",
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "valueInputOption",
+              "value": "USER_ENTERED"
+            },
+            {
+              "name": "insertDataOption",
+              "value": "INSERT_ROWS"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ values: $json.values }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "17f1bced-b0fd-4db8-9ec8-f3a427e070d7",
+      "name": "Sticky Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        430,
+        180
+      ],
+      "parameters": {
+        "content": "Webhook path: /webhook/no-show-sync. The Google Sheet add-on can POST month/year, or the workflow can read them from Automation!A:B. Share both sheets with n8n-portfolio@operating-bolt-453212-b6.iam.gserviceaccount.com.",
+        "color": 7,
+        "width": 500,
+        "height": 180
+      }
+    },
+    {
+      "id": "43f9b10f-04fd-4666-b835-c923c0dd335a",
+      "name": "Sticky Note 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1060,
+        120
+      ],
+      "parameters": {
+        "content": "This workflow appends only columns A:G, leaving A:B blank because current source columns do not expose a reliable quarter or duty location. `TECHNICAL DIRECTOR` is filled from source `Production Director` per user request.",
+        "color": 5,
+        "width": 520,
+        "height": 180
+      }
+    }
+  ],
+  "connections": {
+    "Manual Run": {
+      "main": [
+        [
+          {
+            "node": "Workflow Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Config": {
+      "main": [
+        [
+          {
+            "node": "Read Automation Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Source Values": {
+      "main": [
+        [
+          {
+            "node": "Read Existing Target Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Existing Target Rows": {
+      "main": [
+        [
+          {
+            "node": "Build New No Show Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build New No Show Rows": {
+      "main": [
+        [
+          {
+            "node": "Append No Show Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run From Sheet": {
+      "main": [
+        [
+          {
+            "node": "Workflow Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Automation Settings": {
+      "main": [
+        [
+          {
+            "node": "Read Source Values",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "nodeGroups": [],
+  "tags": [],
+  "meta": {
+    "aiBuilderAssisted": true
+  }
+}
